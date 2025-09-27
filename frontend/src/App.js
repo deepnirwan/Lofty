@@ -114,7 +114,7 @@ function App() {
       setLoading(true);
       for (const row of parsed) {
         console.log('Saving property to backend:', JSON.stringify(row, null, 2));
-        await fetch('http://localhost:4000/api/address', {
+        await fetch('https://deepnirwan-production.up.railway.app/api/address', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(row)
@@ -131,7 +131,7 @@ function App() {
   const fetchAddressesFromBackend = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:4000/api/address');
+  const res = await fetch('https://deepnirwan-production.up.railway.app/api/address');
       const data = await res.json();
       setAddresses(data);
     } catch (err) {
@@ -144,7 +144,7 @@ function App() {
   const handleRemove = async (id) => {
     setLoading(true);
     try {
-      await fetch(`http://localhost:4000/api/address/${id}`, { method: 'DELETE' });
+  await fetch(`https://deepnirwan-production.up.railway.app/api/address/${id}`, { method: 'DELETE' });
       await fetchAddressesFromBackend();
     } catch (err) {
       setError('Failed to remove address: ' + err.message);
