@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Property Map & Inventory</title>
+  <!-- Mapbox CSS is imported in React, no need for external link here -->
+  <style>
+    body { font-family: system-ui, sans-serif; background: #222; color: #fff; margin: 0; }
+    * { box-sizing: border-box; }
+    .container { max-width: 1200px; margin: 32px auto; background: #222; border-radius: 12px; box-shadow: 0 2px 16px #0002; padding: 32px; }
+    h1, h2, h3 { text-align: center; }
+    #map { width: 100%; height: 70vh; min-height: 600px; border-radius: 12px; border: 2px solid #ccc; margin-bottom: 32px; background: #eaeaea; }
+    
+    /* Simple Compact Popup */
+    .mapboxgl-popup-content {
+      padding: 0 !important;
+      font-size: 14px !important;
+      min-width: 200px !important;
+      max-width: 280px !important;
+      max-height: 400px !important;
+      overflow: hidden !important;
+      border-radius: 8px !important;
+      box-sizing: border-box !important;
+    }
+    
+    .mapboxgl-popup-close-button {
+      font-size: 16px !important;
+      padding: 0 4px !important;
+      color: #666 !important;
+      z-index: 1 !important;
+    }
+    
+    .simple-popup {
+      font-family: -apple-system, system-ui, sans-serif;
+      padding: 12px;
+      background: white;
+      box-sizing: border-box;
+      overflow: hidden;
+      max-height: 400px;
+    }
+    
+    .popup-status {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    
+    .popup-status.active {
+      background: #10b981;
+      color: white;
+    }
+    
+    .popup-status.under-construction {
+      background: #f59e0b;
+      color: white;
+    }
+    
+    .popup-status.ready {
+      background: #8b5cf6;
+      color: white;
+    }
+    
+    .popup-address {
+      font-size: 16px;
+      font-weight: bold;
+      color: #1a1a1a;
+      margin: 4px 0;
+    }
+    
+    .popup-location {
+      font-size: 13px;
+      color: #666;
+      margin: 4px 0;
+    }
+    
+    .popup-price {
+      font-size: 20px;
+      font-weight: bold;
+      color: #059669;
+      margin: 6px 0;
+    }
+    
+    .popup-features {
+      display: flex;
+      gap: 12px;
+      margin: 10px 0;
+      padding: 8px 0;
+      border-top: 1px solid #e5e5e5;
+      border-bottom: 1px solid #e5e5e5;
+    }
+    
+    .feature-item {
+      flex: 1;
+      text-align: center;
+    }
+    
+    .feature-value {
+      font-weight: bold;
+      font-size: 16px;
+      color: #1a1a1a;
+    }
+    
+    .feature-label {
+      font-size: 11px;
+      color: #999;
+      text-transform: uppercase;
+    }
+    
+    .popup-info {
+      font-size: 13px;
+      color: #666;
+      margin: 3px 0;
+    }
+    
+    .popup-info strong {
+      color: #333;
+    }
+    
+    .popup-contact {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e5e5e5;
+    }
+    
+    .contact-btn {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      background: #1a1a1a;
+      color: white;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 5px;
+      font-size: 13px;
+      font-weight: 600;
+      box-sizing: border-box;
+    }
+    
+    .contact-btn:hover {
+      background: #333;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>
