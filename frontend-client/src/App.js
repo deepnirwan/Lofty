@@ -18,7 +18,8 @@ function App() {
   const fetchAddressesFromBackend = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/address`);
+      const backendURL = import.meta.env.VITE_API_URL || "https://lofty.onrender.com";
+      const res = await fetch(`${backendURL}/api/address`);
       const data = await res.json();
       setAddresses(data);
     } catch (err) {
