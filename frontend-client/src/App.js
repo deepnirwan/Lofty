@@ -18,7 +18,7 @@ function App() {
   const fetchAddressesFromBackend = async () => {
     setLoading(true);
     try {
-      const res = await fetch('https://deepnirwan-production.up.railway.app/api/address');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/address`);
       const data = await res.json();
       setAddresses(data);
     } catch (err) {
