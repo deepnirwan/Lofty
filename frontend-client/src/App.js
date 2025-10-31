@@ -115,9 +115,21 @@ function App() {
       let lat = row.lat ?? row.Latitude ?? row.latitude;
       let lon = row.lon ?? row.Longitude ?? row.longitude;
       
-      // Convert to number if string
-      lat = typeof lat === 'number' ? lat : parseFloat(lat);
-      lon = typeof lon === 'number' ? lon : parseFloat(lon);
+      // Convert to number if string - preserve full precision, no rounding
+      lat = typeof lat === 'number' ? lat : parseFloat(String(lat));
+      lon = typeof lon === 'number' ? lon : parseFloat(String(lon));
+      
+      // Log raw values for debugging
+      if (index === 0) {
+        console.log(`🔍 Raw coordinate values for row ${index + 1}:`, {
+          rawLat: row.lat ?? row.Latitude ?? row.latitude,
+          rawLon: row.lon ?? row.Longitude ?? row.longitude,
+          parsedLat: lat,
+          parsedLon: lon,
+          latType: typeof lat,
+          lonType: typeof lon
+        });
+      }
       
       // Validate coordinates are valid numbers
       if (isNaN(lat) || isNaN(lon) || lat === null || lon === null || lat === undefined || lon === undefined) {
@@ -139,12 +151,36 @@ function App() {
       
       // Final validation before pushing
       if (!isNaN(lat) && !isNaN(lon) && typeof lat === 'number' && typeof lon === 'number') {
-        // Double-check the values are actually numbers
+        // Double-check the values are actually numbers - preserve full precision
         const finalLat = Number(lat);
         const finalLon = Number(lon);
         if (!isNaN(finalLat) && !isNaN(finalLon)) {
+          // Store the precise coordinates
           validCoords.push([finalLon, finalLat]);
           console.log(`✅ Added valid coordinate for row ${index + 1}: [${finalLon}, ${finalLat}]`);
+          
+          // Create custom marker element - FIXED VERSION
+          const markerEl = document.createElement('div');
+          markerEl.className = 'custom-marker';
+          markerEl.innerHTML = `<span class="marker-number">${index + 1}</span>`;
+          
+          // Add click event
+          markerEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            setSelectedProperty(row);
+            setSidebarOpen(true);
+          });
+
+          // Create marker with proper anchor - USE THE PRECISE COORDINATES
+          const marker = new mapboxgl.Marker({
+            element: markerEl,
+            anchor: 'center' // This ensures the marker stays centered
+          })
+            .setLngLat([finalLon, finalLat]) // Use finalLon and finalLat for precision
+            .addTo(mapRef.current);
+          
+          console.log(`📍 Created marker ${index + 1} at precise coordinates: [${finalLon}, ${finalLat}]`);
+          mapRef.current._markers.push(marker);
         } else {
           console.warn(`⚠️ Skipping row ${index + 1}: Number conversion failed (lat: ${lat}, lon: ${lon})`);
         }
@@ -152,28 +188,6 @@ function App() {
         console.warn(`⚠️ Skipping row ${index + 1}: Final validation failed (lat: ${lat}, lon: ${lon}, latType: ${typeof lat}, lonType: ${typeof lon})`);
         return;
       }
-      
-      // Create custom marker element - FIXED VERSION
-      const markerEl = document.createElement('div');
-      markerEl.className = 'custom-marker';
-      markerEl.innerHTML = `<span class="marker-number">${index + 1}</span>`;
-      
-      // Add click event
-      markerEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        setSelectedProperty(row);
-        setSidebarOpen(true);
-      });
-
-      // Create marker with proper anchor
-      const marker = new mapboxgl.Marker({
-        element: markerEl,
-        anchor: 'center' // This ensures the marker stays centered
-      })
-        .setLngLat([lon, lat])
-        .addTo(mapRef.current);
-      
-      mapRef.current._markers.push(marker);
     });
     
     if (validCoords.length > 0) {
