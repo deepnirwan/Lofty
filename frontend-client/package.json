@@ -4,8 +4,10 @@
   "private": true,
   "dependencies": {
     "mapbox-gl": "^2.15.0",
+    "papaparse": "^5.4.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",
