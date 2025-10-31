@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiaWxpeWFuLWhpcmFuaSIsImEiOiJjbThmNHRxMDMwYTJ2MmpxdHAzbDZxOTNuIn0.nw9ek8mR679n6H-C-Ydhzg';
 
 function App() {
+  console.log('🟢 App component rendering');
   const [addresses, setAddresses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -112,14 +113,32 @@ function App() {
     });
     try {
       setLoading(true);
+      const backendURL = process.env.REACT_APP_API_URL || "https://lofty.onrender.com";
+      let successCount = 0;
+      let failCount = 0;
       for (const row of parsed) {
-        console.log('Saving property to backend:', JSON.stringify(row, null, 2));
-        await fetch('https://deepnirwan-production.up.railway.app/api/address', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(row)
-        });
+        try {
+          console.log('💾 Saving property to backend:', JSON.stringify(row, null, 2));
+          const res = await fetch(`${backendURL}/api/address`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(row)
+          });
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('❌ Failed to save property:', errorData);
+            failCount++;
+          } else {
+            const saved = await res.json();
+            console.log('✅ Saved property:', saved._id);
+            successCount++;
+          }
+        } catch (err) {
+          console.error('❌ Error saving property:', err);
+          failCount++;
+        }
       }
+      console.log(`📊 Upload complete: ${successCount} saved, ${failCount} failed`);
       await fetchAddressesFromBackend();
     } catch (err) {
       setError('Failed to save properties: ' + err.message);
@@ -129,13 +148,25 @@ function App() {
   };
   // Fetch all addresses from backend
   const fetchAddressesFromBackend = async () => {
+    console.log('🚀 fetchAddressesFromBackend called');
     setLoading(true);
+    setError("");
     try {
-  const res = await fetch('https://deepnirwan-production.up.railway.app/api/address');
+      const backendURL = process.env.REACT_APP_API_URL || "https://lofty.onrender.com";
+      console.log('📡 Fetching from backend:', `${backendURL}/api/address`);
+      const res = await fetch(`${backendURL}/api/address`);
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
-      setAddresses(data);
+      console.log('Received addresses:', data.length);
+      setAddresses(data || []);
     } catch (err) {
+      console.error('Failed to fetch addresses:', err);
       setError('Failed to fetch addresses: ' + err.message);
+      setAddresses([]); // Set empty array on error
     }
     setLoading(false);
   };
@@ -144,7 +175,8 @@ function App() {
   const handleRemove = async (id) => {
     setLoading(true);
     try {
-  await fetch(`https://deepnirwan-production.up.railway.app/api/address/${id}`, { method: 'DELETE' });
+      const backendURL = process.env.REACT_APP_API_URL || "https://lofty.onrender.com";
+      await fetch(`${backendURL}/api/address/${id}`, { method: 'DELETE' });
       await fetchAddressesFromBackend();
     } catch (err) {
       setError('Failed to remove address: ' + err.message);
@@ -183,6 +215,7 @@ function App() {
 
   // Fetch addresses on initial load
   useEffect(() => {
+    console.log('🔄 useEffect: Fetching addresses on mount...');
     fetchAddressesFromBackend();
   }, []);
 
@@ -242,11 +275,30 @@ function App() {
     <div className="main-container">
       <header className="header">
         <h2>Property Map & Inventory</h2>
-        <div className="upload-section">
+        <div className="upload-section" style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} id="file-upload" style={{ display: 'none' }} />
           <label htmlFor="file-upload" className="upload-btn">
             {uploading ? 'Uploading...' : 'Upload CSV/XLSX'}
           </label>
+          <button 
+            onClick={fetchAddressesFromBackend} 
+            disabled={loading}
+            style={{ 
+              padding: '10px 20px', 
+              background: '#3b82f6', 
+              color: 'white', 
+              border: 'none', 
+              borderRadius: '6px', 
+              cursor: loading ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            {loading ? 'Loading...' : '🔄 Refresh Data'}
+          </button>
+          <span style={{ color: '#888', fontSize: '14px' }}>
+            ({addresses.length} properties loaded)
+          </span>
         </div>
         {error && <div className="error-msg">{error}</div>}
       </header>
