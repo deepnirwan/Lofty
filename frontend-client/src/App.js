@@ -159,7 +159,7 @@ function App() {
           validCoords.push([finalLon, finalLat]);
           console.log(`✅ Added valid coordinate for row ${index + 1}: [${finalLon}, ${finalLat}]`);
           
-          // Create custom marker element - FIXED VERSION
+          // Create custom marker element with FIXED positioning
           const markerEl = document.createElement('div');
           markerEl.className = 'custom-marker';
           markerEl.innerHTML = `<span class="marker-number">${index + 1}</span>`;
@@ -171,10 +171,11 @@ function App() {
             setSidebarOpen(true);
           });
 
-          // Create marker with proper anchor - USE THE PRECISE COORDINATES
+          // Create marker with proper anchor and FIXED positioning
           const marker = new mapboxgl.Marker({
             element: markerEl,
-            anchor: 'center' // This ensures the marker stays centered
+            anchor: 'center', // Center anchor point
+            offset: [0, 0]    // No offset - stays exactly at coordinates
           })
             .setLngLat([finalLon, finalLat]) // Use finalLon and finalLat for precision
             .addTo(mapRef.current);
@@ -682,44 +683,54 @@ function App() {
           100% { transform: rotate(360deg); }
         }
 
-       /* ===== FIXED CUSTOM MARKER STYLES ===== */
+        /* ===== FIXED CUSTOM MARKER STYLES - NO MOVEMENT ===== */
         .custom-marker {
           width: 40px;
           height: 40px;
+          /* Use box-shadow for border effect instead of actual border */
+          /* This prevents size changes that cause position drift */
           background: linear-gradient(135deg, #10b981, #059669);
-          border: 3px solid white;
           border-radius: 50%;
           cursor: pointer;
-          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+          box-shadow: 
+            0 0 0 3px white,  /* White border effect */
+            0 4px 12px rgba(16, 185, 129, 0.4);  /* Shadow */
           display: flex;
           align-items: center;
           justify-content: center;
           position: relative;
           pointer-events: auto;
-          transition: box-shadow 0.3s ease, background 0.3s ease, transform 0.3s ease;
-          /* CRITICAL: Prevents size changes from affecting position */
+          /* CRITICAL: Keep dimensions absolutely fixed */
           box-sizing: border-box;
+          /* Only animate properties that don't affect size */
+          transition: box-shadow 0.3s ease, background 0.3s ease, transform 0.3s ease;
         }
 
         .custom-marker:hover {
-          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
-          /* REMOVED border-width change - this was causing the drift */
+          /* Use box-shadow for hover border - size stays the same */
+          box-shadow: 
+            0 0 0 4px white,  /* Slightly thicker white border */
+            0 6px 20px rgba(16, 185, 129, 0.6);  /* Enhanced shadow */
           background: linear-gradient(135deg, #059669, #047857);
-          /* Use transform: scale instead to avoid changing actual dimensions */
-          transform: scale(1.1);
+          /* Optional: slight scale for visual feedback without moving position */
+          transform: scale(1.05);
         }
 
         .custom-marker:active {
-          box-shadow: 0 2px 8px rgba(16, 185, 129, 0.5);
-          transform: scale(1);
+          box-shadow: 
+            0 0 0 3px white,
+            0 2px 8px rgba(16, 185, 129, 0.5);
+          transform: scale(0.95);
         }
 
         .marker-number {
           color: white;
           font-weight: bold;
-          font-size: 13px;
+          font-size: 14px;
           user-select: none;
           pointer-events: none;
+          /* Ensure text stays centered */
+          line-height: 1;
         }
 
         /* Property Sidebar */
