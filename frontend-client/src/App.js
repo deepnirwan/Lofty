@@ -682,10 +682,10 @@ function App() {
           100% { transform: rotate(360deg); }
         }
 
-        /* ===== FIXED CUSTOM MARKER STYLES ===== */
+       /* ===== FIXED CUSTOM MARKER STYLES ===== */
         .custom-marker {
-          width: 36px;
-          height: 36px;
+          width: 40px;
+          height: 40px;
           background: linear-gradient(135deg, #10b981, #059669);
           border: 3px solid white;
           border-radius: 50%;
@@ -696,19 +696,22 @@ function App() {
           justify-content: center;
           position: relative;
           pointer-events: auto;
-          /* REMOVED transform - this was causing the positioning issue */
-          transition: box-shadow 0.3s ease, border-width 0.3s ease, background 0.3s ease;
+          transition: box-shadow 0.3s ease, background 0.3s ease, transform 0.3s ease;
+          /* CRITICAL: Prevents size changes from affecting position */
+          box-sizing: border-box;
         }
 
         .custom-marker:hover {
           box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
-          border-width: 4px;
+          /* REMOVED border-width change - this was causing the drift */
           background: linear-gradient(135deg, #059669, #047857);
-          /* NO transform here - that's what was causing the movement */
+          /* Use transform: scale instead to avoid changing actual dimensions */
+          transform: scale(1.1);
         }
 
         .custom-marker:active {
           box-shadow: 0 2px 8px rgba(16, 185, 129, 0.5);
+          transform: scale(1);
         }
 
         .marker-number {
