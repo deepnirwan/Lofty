@@ -13,6 +13,7 @@ function App() {
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
+  const markersRef = useRef([]); // Store marker elements
 
   // Fetch all addresses from backend
   const fetchAddressesFromBackend = async () => {
@@ -35,7 +36,7 @@ function App() {
     } catch (err) {
       console.error('❌ Failed to fetch addresses:', err);
       setError('Failed to fetch addresses: ' + err.message);
-      setAddresses([]); // Set empty array on error
+      setAddresses([]);
     }
     setLoading(false);
   };
@@ -103,202 +104,152 @@ function App() {
     fetchAddressesFromBackend();
   }, []);
 
+  // Function to update marker positions - MANUAL POSITIONING
+  const updateMarkerPositions = () => {
+    if (!mapRef.current) return;
+    
+    markersRef.current.forEach((markerData) => {
+      if (!markerData.element || !markerData.coordinates) return;
+      
+      // Project geographic coordinates to screen pixels
+      const pos = mapRef.current.project(markerData.coordinates);
+      
+      // Update the marker's position using transform
+      markerData.element.style.transform = `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px)`;
+    });
+  };
+
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
-    if (mapRef.current._markers) {
-      mapRef.current._markers.forEach(m => m.remove());
-    }
-    mapRef.current._markers = [];
+    
+    // Clear existing markers
+    markersRef.current.forEach(markerData => {
+      if (markerData.element && markerData.element.parentNode) {
+        markerData.element.parentNode.removeChild(markerData.element);
+      }
+    });
+    markersRef.current = [];
+    
     const validCoords = [];
+    
     addresses.forEach((row, index) => {
       // Try to get lat/lon from various possible field names
       let lat = row.lat ?? row.Latitude ?? row.latitude;
       let lon = row.lon ?? row.Longitude ?? row.longitude;
       
-      // Convert to number if string - preserve full precision, no rounding
+      // Convert to number if string
       lat = typeof lat === 'number' ? lat : parseFloat(String(lat));
       lon = typeof lon === 'number' ? lon : parseFloat(String(lon));
       
-      // Log raw values for debugging
-      if (index === 0) {
-        console.log(`🔍 Raw coordinate values for row ${index + 1}:`, {
-          rawLat: row.lat ?? row.Latitude ?? row.latitude,
-          rawLon: row.lon ?? row.Longitude ?? row.longitude,
-          parsedLat: lat,
-          parsedLon: lon,
-          latType: typeof lat,
-          lonType: typeof lon
-        });
-      }
-      
-      // Validate coordinates are valid numbers
-      if (isNaN(lat) || isNaN(lon) || lat === null || lon === null || lat === undefined || lon === undefined) {
-        console.warn(`⚠️ Skipping row ${index + 1}: Invalid coordinates`, {
-          rawLat: row.lat ?? row.Latitude ?? row.latitude,
-          rawLon: row.lon ?? row.Longitude ?? row.longitude,
-          parsedLat: lat,
-          parsedLon: lon,
-          row: row
-        });
+      // Validate coordinates
+      if (isNaN(lat) || isNaN(lon) || lat === null || lon === null || 
+          lat === undefined || lon === undefined ||
+          lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        console.warn(`⚠️ Skipping row ${index + 1}: Invalid coordinates`);
         return;
       }
       
-      // Validate coordinate ranges
-      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-        console.warn(`⚠️ Skipping row ${index + 1}: Coordinates out of range (lat: ${lat}, lon: ${lon})`);
-        return;
-      }
+      const finalLat = Number(lat);
+      const finalLon = Number(lon);
       
-      // Final validation before pushing
-      if (!isNaN(lat) && !isNaN(lon) && typeof lat === 'number' && typeof lon === 'number') {
-        // Double-check the values are actually numbers - preserve full precision
-        const finalLat = Number(lat);
-        const finalLon = Number(lon);
-        if (!isNaN(finalLat) && !isNaN(finalLon)) {
-          // Store the precise coordinates
-          validCoords.push([finalLon, finalLat]);
-          console.log(`✅ Added valid coordinate for row ${index + 1}: [${finalLon}, ${finalLat}]`);
-          
-          // Create custom marker element with FIXED positioning
-          const markerEl = document.createElement('div');
-          markerEl.className = 'custom-marker';
-          markerEl.innerHTML = `<span class="marker-number">${index + 1}</span>`;
-          
-          // Add click event
-          markerEl.addEventListener('click', (e) => {
-            e.stopPropagation();
-            setSelectedProperty(row);
-            setSidebarOpen(true);
-          });
+      if (!isNaN(finalLat) && !isNaN(finalLon)) {
+        validCoords.push([finalLon, finalLat]);
+        console.log(`✅ Added valid coordinate for row ${index + 1}: [${finalLon}, ${finalLat}]`);
+        
+        // Create marker element - MANUAL POSITIONING APPROACH
+        const markerEl = document.createElement('div');
+        markerEl.className = 'custom-marker';
+        markerEl.innerHTML = `<div class="marker-inner"><span class="marker-number">${index + 1}</span></div>`;
+        
+        // Add click event
+        markerEl.addEventListener('click', (e) => {
+          e.stopPropagation();
+          setSelectedProperty(row);
+          setSidebarOpen(true);
+        });
 
-          // Create marker with proper anchor and FIXED positioning
-          const marker = new mapboxgl.Marker({
-            element: markerEl,
-            anchor: 'center', // Center anchor point
-            offset: [0, 0]    // No offset - stays exactly at coordinates
-          })
-            .setLngLat([finalLon, finalLat]) // Use finalLon and finalLat for precision
-            .addTo(mapRef.current);
-          
-          console.log(`📍 Created marker ${index + 1} at precise coordinates: [${finalLon}, ${finalLat}]`);
-          mapRef.current._markers.push(marker);
-        } else {
-          console.warn(`⚠️ Skipping row ${index + 1}: Number conversion failed (lat: ${lat}, lon: ${lon})`);
-        }
-      } else {
-        console.warn(`⚠️ Skipping row ${index + 1}: Final validation failed (lat: ${lat}, lon: ${lon}, latType: ${typeof lat}, lonType: ${typeof lon})`);
-        return;
+        // Get the map canvas container
+        const mapCanvasContainer = mapRef.current.getCanvasContainer();
+        
+        // Append marker directly to map container
+        mapCanvasContainer.appendChild(markerEl);
+        
+        // Store marker data for position updates
+        markersRef.current.push({
+          element: markerEl,
+          coordinates: [finalLon, finalLat],
+          property: row
+        });
+        
+        console.log(`📍 Created marker ${index + 1} at coordinates: [${finalLon}, ${finalLat}]`);
       }
     });
     
+    // Initial position update
+    setTimeout(() => {
+      updateMarkerPositions();
+    }, 100);
+    
+    // Set up event listeners to update marker positions on map movement
+    const updateEvents = ['move', 'pitch', 'rotate', 'zoom'];
+    updateEvents.forEach(event => {
+      mapRef.current.on(event, updateMarkerPositions);
+    });
+    
+    // Fit bounds if we have valid coordinates
     if (validCoords.length > 0) {
       try {
-        console.log('📍 Processing validCoords:', validCoords);
-        
-        // Filter out any invalid coordinates first
-        const filteredCoords = validCoords.filter(coord => {
-          const [lon, lat] = coord;
-          const isValid = !isNaN(lon) && !isNaN(lat) && 
-                          typeof lon === 'number' && typeof lat === 'number' &&
-                          lon >= -180 && lon <= 180 && 
-                          lat >= -90 && lat <= 90;
-          if (!isValid) {
-            console.warn('⚠️ Filtered out invalid coord:', coord);
-          }
-          return isValid;
-        });
-        
-        if (filteredCoords.length === 0) {
-          console.warn('⚠️ No valid coordinates after filtering');
-          return;
-        }
-        
-        // Get the first coordinate - already validated
-        const [firstLon, firstLat] = filteredCoords[0];
-        console.log('📍 Creating bounds with first coord:', { lon: firstLon, lat: firstLat });
-        
-        // Create bounds with the first coordinate
+        const [firstLon, firstLat] = validCoords[0];
         const bounds = new mapboxgl.LngLatBounds([firstLon, firstLat], [firstLon, firstLat]);
         
-        // Extend bounds with remaining valid coordinates
-        for (let i = 1; i < filteredCoords.length; i++) {
-          const [lon, lat] = filteredCoords[i];
-          bounds.extend([lon, lat]);
+        for (let i = 1; i < validCoords.length; i++) {
+          bounds.extend(validCoords[i]);
         }
         
-        // Validate bounds values
         const north = bounds.getNorth();
         const south = bounds.getSouth();
         const east = bounds.getEast();
         const west = bounds.getWest();
         
-        console.log('📍 Bounds calculated:', { north, south, east, west });
-        
-        // Final validation
-        if (!isNaN(north) && !isNaN(south) && !isNaN(east) && !isNaN(west) &&
-            typeof north === 'number' && typeof south === 'number' &&
-            typeof east === 'number' && typeof west === 'number') {
-          
-          // Check if it's a single point (all bounds are the same)
+        if (!isNaN(north) && !isNaN(south) && !isNaN(east) && !isNaN(west)) {
           const isSinglePoint = (north === south && east === west);
           
-          // Wait a bit for map to be fully ready
           setTimeout(() => {
             if (!mapRef.current) return;
             
-            const executeFit = () => {
-              if (isSinglePoint && filteredCoords.length > 0) {
-                // For single point, use setCenter with zoom
-                const [lon, lat] = filteredCoords[0];
-                mapRef.current.setCenter([lon, lat]);
-                mapRef.current.setZoom(14); // Zoom level 14 shows street level
-                console.log(`✅ Map centered on single point: [${lon}, ${lat}] at zoom 14`);
-              } else {
-                // For multiple points or if bounds are different, use fitBounds
-                // Add padding to bounds if they're too close
-                if (Math.abs(north - south) < 0.001 || Math.abs(east - west) < 0.001) {
-                  // Add a small buffer for single points
-                  const latBuffer = 0.01;
-                  const lonBuffer = 0.01;
-                  const expandedBounds = new mapboxgl.LngLatBounds(
-                    [west - lonBuffer, south - latBuffer],
-                    [east + lonBuffer, north + latBuffer]
-                  );
-                  mapRef.current.fitBounds(expandedBounds, { 
-                    padding: 60, 
-                    maxZoom: 16,
-                    duration: 1000
-                  });
-                  console.log(`✅ Map fitted to ${filteredCoords.length} markers (expanded bounds)`);
-                } else {
-                  mapRef.current.fitBounds(bounds, { 
-                    padding: 60, 
-                    maxZoom: 16,
-                    duration: 1000
-                  });
-                  console.log(`✅ Map fitted to ${filteredCoords.length} markers`);
-                }
-              }
-            };
-            
-            if (mapRef.current.isStyleLoaded()) {
-              executeFit();
+            if (isSinglePoint) {
+              mapRef.current.setCenter([validCoords[0][0], validCoords[0][1]]);
+              mapRef.current.setZoom(14);
             } else {
-              // If style not loaded yet, wait for idle event
-              mapRef.current.once('idle', executeFit);
+              if (Math.abs(north - south) < 0.001 || Math.abs(east - west) < 0.001) {
+                const expandedBounds = new mapboxgl.LngLatBounds(
+                  [west - 0.01, south - 0.01],
+                  [east + 0.01, north + 0.01]
+                );
+                mapRef.current.fitBounds(expandedBounds, { padding: 60, maxZoom: 16, duration: 1000 });
+              } else {
+                mapRef.current.fitBounds(bounds, { padding: 60, maxZoom: 16, duration: 1000 });
+              }
             }
+            
+            // Update positions after fitting bounds
+            setTimeout(updateMarkerPositions, 500);
           }, 200);
-        } else {
-          console.warn('⚠️ Invalid bounds calculated, skipping fitBounds', { north, south, east, west });
         }
       } catch (err) {
         console.error('❌ Error fitting bounds:', err);
-        console.error('Valid coords:', validCoords);
-        console.error('Error details:', err.message);
       }
-    } else {
-      console.log('ℹ️ No valid coordinates found to display on map');
     }
+    
+    // Cleanup function
+    return () => {
+      const updateEvents = ['move', 'pitch', 'rotate', 'zoom'];
+      updateEvents.forEach(event => {
+        if (mapRef.current) {
+          mapRef.current.off(event, updateMarkerPositions);
+        }
+      });
+    };
   }, [addresses, mapReady]);
 
   return (
@@ -683,43 +634,37 @@ function App() {
           100% { transform: rotate(360deg); }
         }
 
-        /* ===== FIXED CUSTOM MARKER STYLES - NO MOVEMENT ===== */
+        /* ===== FIXED CUSTOM MARKER STYLES - MANUAL POSITIONING ===== */
         .custom-marker {
+          position: absolute;
           width: 40px;
           height: 40px;
-          /* Use box-shadow for border effect instead of actual border */
-          /* This prevents size changes that cause position drift */
+          cursor: pointer;
+          pointer-events: auto;
+          /* Static outer container - no transitions or transforms on outer */
+        }
+
+        .marker-inner {
+          width: 100%;
+          height: 100%;
           background: linear-gradient(135deg, #10b981, #059669);
           border-radius: 50%;
-          cursor: pointer;
-          box-shadow: 
-            0 0 0 3px white,  /* White border effect */
-            0 4px 12px rgba(16, 185, 129, 0.4);  /* Shadow */
+          box-shadow: 0 0 0 3px white, 0 4px 12px rgba(16, 185, 129, 0.4);
           display: flex;
           align-items: center;
           justify-content: center;
-          position: relative;
-          pointer-events: auto;
-          /* CRITICAL: Keep dimensions absolutely fixed */
-          box-sizing: border-box;
-          /* Only animate properties that don't affect size */
           transition: box-shadow 0.3s ease, background 0.3s ease, transform 0.3s ease;
+          box-sizing: border-box;
         }
 
-        .custom-marker:hover {
-          /* Use box-shadow for hover border - size stays the same */
-          box-shadow: 
-            0 0 0 4px white,  /* Slightly thicker white border */
-            0 6px 20px rgba(16, 185, 129, 0.6);  /* Enhanced shadow */
+        .custom-marker:hover .marker-inner {
+          box-shadow: 0 0 0 4px white, 0 6px 20px rgba(16, 185, 129, 0.6);
           background: linear-gradient(135deg, #059669, #047857);
-          /* Optional: slight scale for visual feedback without moving position */
           transform: scale(1.05);
         }
 
-        .custom-marker:active {
-          box-shadow: 
-            0 0 0 3px white,
-            0 2px 8px rgba(16, 185, 129, 0.5);
+        .custom-marker:active .marker-inner {
+          box-shadow: 0 0 0 3px white, 0 2px 8px rgba(16, 185, 129, 0.5);
           transform: scale(0.95);
         }
 
@@ -729,7 +674,6 @@ function App() {
           font-size: 14px;
           user-select: none;
           pointer-events: none;
-          /* Ensure text stays centered */
           line-height: 1;
         }
 
